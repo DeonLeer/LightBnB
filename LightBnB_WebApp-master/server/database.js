@@ -96,49 +96,54 @@ exports.getAllReservations = getAllReservations;
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 const getAllProperties = function(options, limit = 10) {
+  // 1
   const queryParams = [];
+  // 2
   let queryString = `
   SELECT properties.*, avg(property_reviews.rating) as average_rating
-  FROM properties 
-  LEFT JOIN property_reviews ON properties.id = property_id
-  WHERE 1=1
+  FROM properties
+  JOIN property_reviews ON properties.id = property_id
   `;
 
+  // 3
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    queryString += `WHERE city LIKE $${queryParams.length} `;
+  }
   if (options.owner_id) {
     queryParams.push(options.owner_id);
-    queryString += `AND properties.owner_id = ${queryParams.length}`;
-  }
-  if (options.city) {
-    queryParams.push(options.city);
-    queryString += `AND properties.city LIKE ${queryParams.length}`;
+    queryString += `AND properties.owner_id = $${queryParams.length}`;
   }
   if (options.minimum_price_per_night) {
     queryParams.push(options.minimum_price_per_night);
-    queryString += `AND properties.cost_per_night >= ${queryParams.length}`;
+    queryString += `AND properties.cost_per_night >= $${queryParams.length}`;
   }
   if (options.maximum_price_per_night) {
     queryParams.push(options.maximum_price_per_night);
-    queryString += `AND properties.cost_per_night <= ${queryParams.length}`;
+    queryString += `AND properties.cost_per_night <= $${queryParams.length}`;
   }
 
   if (options.minimum_rating) {
     queryParams.push(options.minimum_rating);
-    queryString += `HAVING avg(properties_reviews.rating) >= ${queryParams.length}`;
+    queryString += `HAVING avg(properties_reviews.rating) >= $${queryParams.length}`;
   }
-  
+
+  // 4
   queryParams.push(limit);
   queryString += `
+  GROUP BY properties.id
   ORDER BY cost_per_night
-  LIMIT ${queryParams.length};
+  LIMIT $${queryParams.length};
   `;
 
-  console.log(queryString,queryParams);
+  console.log(queryString, queryParams);
 
+
+
+  // 6
   return pool.query(queryString, queryParams)
-  .then(res => {
-    return res.rows;
-  });
-};
+  .then(res => res.rows);
+}
 exports.getAllProperties = getAllProperties;
 
 
